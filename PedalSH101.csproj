@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>false</UseWPF>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Browser display name comes from the DLL filename — must end in .NET
+         so ReBuzz routes it to the managed loader. (Build §2)            -->
+    <AssemblyName>Pedal SH101.NET</AssemblyName>
+    <RootNamespace>PedalSH101</RootNamespace>
+
+    <!-- Mandatory deployment hygiene (Build §1.2):
+         ReBuzz only loads the .dll. Don't ship .pdb or .deps.json.       -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+
+    <!-- Suppress harmless ReBuzz/.NET10-SDK assembly version conflicts.
+         (Build §4)                                                       -->
+    <NoWarn>MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <!-- ReBuzz install path. Override on the command line if your install
+       lives elsewhere:  dotnet build -p:ReBuzzPath="D:\ReBuzz"           -->
+  <PropertyGroup>
+    <ReBuzzPath Condition="'$(ReBuzzPath)' == ''">C:\Program Files\ReBuzz</ReBuzzPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BuzzGUI.Interfaces">
+      <HintPath>$(ReBuzzPath)\BuzzGUI.Interfaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Buzz.MachineInterface">
+      <HintPath>$(ReBuzzPath)\Buzz.MachineInterface.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Auto-deploy after successful build. Generators go in Gear\Generators. -->
+  <Target Name="DeployToReBuzz" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFolder="$(ReBuzzPath)\Gear\Generators" />
+  </Target>
+
+</Project>
