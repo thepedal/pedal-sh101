@@ -39,10 +39,28 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-deploy after successful build. Generators go in Gear\Generators. -->
+  <!-- Preset bundle. ItemGroup form (not literal SourceFiles=) so the
+       space in the filename round-trips correctly through MSBuild.
+       (Build §3.5) -->
+  <ItemGroup>
+    <PresetBundle Include="Pedal SH101.prs.xml" />
+  </ItemGroup>
+
+  <!-- Auto-deploy after successful build. Generators go in Gear\Generators.
+       The preset bundle filename matches the machine name + .prs.xml — the
+       auto-load form per Build §3.1, so ReBuzz picks the presets up the
+       moment the machine is dropped into a song.                           -->
   <Target Name="DeployToReBuzz" AfterTargets="Build">
+    <Message Text="Deploying $(TargetFileName) → $(ReBuzzPath)\Gear\Generators\"
+             Importance="high" />
     <Copy SourceFiles="$(TargetPath)"
-          DestinationFolder="$(ReBuzzPath)\Gear\Generators" />
+          DestinationFolder="$(ReBuzzPath)\Gear\Generators"
+          ContinueOnError="true" />
+    <Message Text="Deploying @(PresetBundle) → $(ReBuzzPath)\Gear\Generators\"
+             Importance="high" />
+    <Copy SourceFiles="@(PresetBundle)"
+          DestinationFolder="$(ReBuzzPath)\Gear\Generators"
+          ContinueOnError="true" />
   </Target>
 
 </Project>

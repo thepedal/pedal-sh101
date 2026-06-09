@@ -42,80 +42,62 @@ namespace PedalSH101
         float _s1, _s2, _s3, _s4;
 
         // ── Coefficient cache (PedalComp §6) ──────────────────────────────
-        // Pow/Tan and the per-stage product chain only fire when fc, res, or
-        // sr actually changes. With control-rate updates (caller updates
-        // every N samples instead of per-sample) this cuts the dominant
-        // MathF.Tan cost by N×.
+        // The Pow/Tan calls only fire when fc, res, or sr actually changes.
         int   _cSr  = 0;
         float _cFc  = -1f;
         float _cRes = -1f;
         float _G, _G4, _oneMinusG, _k;
-        // Pre-multiplied stage products — depend only on G, cached together
-        float _G3oneMinusG, _G2oneMinusG, _GoneMinusG;
 
         public void Reset()
         {
             _s1 = _s2 = _s3 = _s4 = 0f;
         }
 
-        /// <summary>
-        /// Recompute filter coefficients. Call when fc, res, or sr changes —
-        /// typically at control rate (every N samples) since MathF.Tan is the
-        /// dominant cost in this filter.
-        /// </summary>
-        public void UpdateCoefs(float fc, float res, int sr)
+        public float Process(float input, float fc, float res, int sr)
         {
-            if (fc == _cFc && res == _cRes && sr == _cSr) return;
-            _cSr = sr; _cFc = fc; _cRes = res;
+            if (fc != _cFc || res != _cRes || sr != _cSr)
+            {
+                _cSr = sr; _cFc = fc; _cRes = res;
 
-            // Bilinear pre-warp. Cap the argument to tan() to stay below
-            // the asymptote (≈ π/2). 1.55 keeps us safely below.
-            float wd = MathF.PI * fc / sr;
-            if (wd > 1.55f) wd = 1.55f;
-            float g  = MathF.Tan(wd);
-            _G          = g / (1f + g);
-            _oneMinusG  = 1f - _G;
+                // Bilinear pre-warp. Cap the argument to tan() to stay below
+                // the asymptote (≈ π/2). 1.55 keeps us safely below.
+                float wd = MathF.PI * fc / sr;
+                if (wd > 1.55f) wd = 1.55f;
+                float g  = MathF.Tan(wd);
+                _G          = g / (1f + g);
+                _G4         = _G * _G * _G * _G;
+                _oneMinusG  = 1f - _G;
+                _k          = res * 4f;     // 0..1 input → 0..4 (4 = self-osc)
+            }
 
-            float G2 = _G * _G;
-            float G3 = G2 * _G;
-            _G4          = G2 * G2;
-            _G3oneMinusG = G3 * _oneMinusG;
-            _G2oneMinusG = G2 * _oneMinusG;
-            _GoneMinusG  = _G * _oneMinusG;
+            float G          = _G;
+            float oneMinusG  = _oneMinusG;
+            float k          = _k;
+            float G4         = _G4;
+            float G2         = G * G;
+            float G3         = G2 * G;
 
-            _k = res * 4f;     // 0..1 input → 0..4 (4 = self-osc)
-        }
-
-        /// <summary>
-        /// Process one sample using the most recently updated coefficients.
-        /// Caller must have called UpdateCoefs at least once before the first
-        /// Process call.
-        /// </summary>
-        public float Process(float input)
-        {
             // Closed-form ZDF resolution for y4 (see header derivation).
-            // S = G³(1-G)·s1 + G²(1-G)·s2 + G(1-G)·s3 + (1-G)·s4
-            //     — products precomputed in UpdateCoefs.
-            float S = _G3oneMinusG * _s1
-                    + _G2oneMinusG * _s2
-                    + _GoneMinusG  * _s3
-                    + _oneMinusG   * _s4;
+            float S = G3 * oneMinusG * _s1
+                    + G2 * oneMinusG * _s2
+                    + G  * oneMinusG * _s3
+                    +      oneMinusG * _s4;
 
-            float y4cf = (_G4 * input + S) / (1f + _k * _G4);
-            float inputWithFb = input - _k * y4cf;
+            float y4cf = (G4 * input + S) / (1f + k * G4);
+            float inputWithFb = input - k * y4cf;
 
             // Re-evaluate per stage to update integrator states.
             // y_k = G*x + (1-G)*s ; s_new = 2*y - s
-            float y1 = _G * inputWithFb + _oneMinusG * _s1;
+            float y1 = G * inputWithFb + oneMinusG * _s1;
             _s1 = 2f * y1 - _s1;
 
-            float y2 = _G * y1 + _oneMinusG * _s2;
+            float y2 = G * y1 + oneMinusG * _s2;
             _s2 = 2f * y2 - _s2;
 
-            float y3 = _G * y2 + _oneMinusG * _s3;
+            float y3 = G * y2 + oneMinusG * _s3;
             _s3 = 2f * y3 - _s3;
 
-            float y4 = _G * y3 + _oneMinusG * _s4;
+            float y4 = G * y3 + oneMinusG * _s4;
             _s4 = 2f * y4 - _s4;
 
             // y4 here equals y4cf in exact arithmetic; in float it may

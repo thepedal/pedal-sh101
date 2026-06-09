@@ -223,25 +223,6 @@ namespace PedalSH101
 
 
         // ─────────────────────────────────────────────────────────────
-        //  Fast 2^x — replaces MathF.Pow(2f, x) in the audio hot path.
-        //  IEEE 754 trick: directly construct the float by setting its
-        //  exponent bits, then multiply by a small polynomial for the
-        //  fractional part.
-        //
-        //  Accuracy: ~0.04% (well under 1 cent of pitch / well under
-        //  1 dB of cutoff). PedalComp §5 covers the same idea with a
-        //  rebased base-10 form; this is the base-2 specialisation.
-        // ─────────────────────────────────────────────────────────────
-        static float FastPow2(float x)
-        {
-            float xi = MathF.Floor(x);
-            float xf = x - xi;
-            float p  = 1f + xf * (0.69315f + xf * (0.24023f + xf * 0.05550f));
-            int   e  = Math.Clamp((int)xi + 127, 1, 254);
-            return BitConverter.Int32BitsToSingle(e << 23) * p;
-        }
-
-        // ─────────────────────────────────────────────────────────────
         //  Coefficient cache for things that depend on (parameter, sr)
         //  but aren't owned by an inner DSP class. (PedalComp §6)
         // ─────────────────────────────────────────────────────────────
@@ -344,33 +325,18 @@ namespace PedalSH101
             float subLvl          = SubLevel   / 127f;
             float noiseLvl        = NoiseLevel / 127f;
             int   subType         = SubType;
+            int   pwmSrc          = PwmSource;
             float pwmAmt          = PwmAmount  / 127f;
             float baseCutoffHz    = 20f * MathF.Pow(1000f, Cutoff / 127f); // 20..20k Hz log
             float resN            = Resonance  / 127f;                // 0..1
             float envAmtOctaves   = ((EnvAmount - 64) / 64f) * 5f;     // ±5 oct
             float lfoFiltOctaves  = (VcfMod / 127f) * 4f;              // up to 4 oct
+            int   kbdFollowMode   = KbdFollow;
+            int   vcaMode         = VcaMode;
             float volume          = Volume / 127f;
             float glideCoef       = _glideCoef;
             float currentPitch    = _currentPitchSemis;
             float targetPitch     = _targetPitchSemis;
-
-            // ── Hoisted PWM coefficients (was a per-sample switch) ──
-            // pwm = pwmBase + lfo * pwmLfoCo + env * pwmEnvCo, branchless.
-            int   pwmSrc    = PwmSource;
-            float pwmBase   = 0.5f + ((pwmSrc == 0) ? -pwmAmt * 0.4f : 0f);
-            float pwmLfoCo  = (pwmSrc == 1) ?  pwmAmt * 0.4f : 0f;
-            float pwmEnvCo  = (pwmSrc == 2) ? -pwmAmt * 0.4f : 0f;
-
-            // ── Hoisted Kbd Follow coefficient ──
-            int   kbdFollowMode = KbdFollow;
-            float kbdFollowCoef = (kbdFollowMode == 1) ? (1f / 24f)
-                               : (kbdFollowMode == 2) ? (1f / 12f) : 0f;
-
-            // ── Hoisted VCA selectors (branchless mix of env vs gate) ──
-            int   vcaMode    = VcaMode;
-            float vcaUseEnv  = (vcaMode == 1) ? 1f : 0f;
-            float vcaUseGate = 1f - vcaUseEnv;
-            float gateLvl    = _gateActive ? 1f : 0f;
 
             // Push live knob values to inner DSP blocks.
             _env.Attack  = Attack;
@@ -381,13 +347,6 @@ namespace PedalSH101
             _lfo.Rate     = _lfoRateHz;
 
             float fcMaxHz = sr * 0.49f;
-
-            // ── Control-rate filter coefficient updates ──
-            // The dominant cost in MoogLadder is MathF.Tan in the bilinear
-            // pre-warp. Updating coefs every 16 samples (~3 kHz at 48 kHz)
-            // is well above any envelope/LFO motion, and cuts that cost 16×.
-            const int FILTER_UPDATE_MASK = 16 - 1;   // 16 must be a power of 2
-            int filterUpdateCounter = 0;
 
             for (int i = 0; i < n; i++)
             {
@@ -401,16 +360,28 @@ namespace PedalSH101
                 float lfo = _lfo.Process(sr);
                 float env = _env.Process(sr);
 
-                // 3. Final VCO pitch and frequency (FastPow2 replaces MathF.Pow)
+                // 3. Final VCO pitch and frequency
                 float pitchSemis = currentPitch
                                  + rangeOffsetSemi
                                  + fineSemi
                                  + lfo * vcoModSemi;
-                float freq = 440f * FastPow2((pitchSemis - 69f) * (1f / 12f));
+                float freq = 440f * MathF.Pow(2f, (pitchSemis - 69f) * (1f / 12f));
                 if (freq < 1f) freq = 1f;
 
-                // 4. PWM (branchless, hoisted coefficients)
-                float pwm = pwmBase + lfo * pwmLfoCo + env * pwmEnvCo;
+                // 4. PWM
+                float pwm;
+                switch (pwmSrc)
+                {
+                    case 1: // LFO modulates around 0.5
+                        pwm = 0.5f + lfo * pwmAmt * 0.4f;
+                        break;
+                    case 2: // Env modulates around 0.5 (downward, since env >= 0)
+                        pwm = 0.5f - env * pwmAmt * 0.4f;
+                        break;
+                    default: // Manual: 0 = square, 127 = narrow (10%)
+                        pwm = 0.5f - pwmAmt * 0.4f;
+                        break;
+                }
                 if      (pwm < 0.05f) pwm = 0.05f;
                 else if (pwm > 0.95f) pwm = 0.95f;
 
@@ -419,23 +390,23 @@ namespace PedalSH101
                     freq, pwm, subType,
                     pulseLvl, sawLvl, subLvl, noiseLvl, sr);
 
-                // 6. VCF cutoff (FastPow2 replaces MathF.Pow)
-                float kbdOctaves = (currentPitch - 60f) * kbdFollowCoef;
-                float fcOctMod   = envAmtOctaves * env
-                                 + lfoFiltOctaves * lfo
-                                 + kbdOctaves;
-                float fc = baseCutoffHz * FastPow2(fcOctMod);
+                // 6. VCF cutoff (in octaves above base)
+                float kbdOctaves = 0f;
+                if      (kbdFollowMode == 1) kbdOctaves = (currentPitch - 60f) / 24f; // half
+                else if (kbdFollowMode == 2) kbdOctaves = (currentPitch - 60f) / 12f; // full
+
+                float fcOctMod = envAmtOctaves * env
+                               + lfoFiltOctaves * lfo
+                               + kbdOctaves;
+                float fc = baseCutoffHz * MathF.Pow(2f, fcOctMod);
                 if      (fc < 20f)     fc = 20f;
                 else if (fc > fcMaxHz) fc = fcMaxHz;
 
-                // 7. VCF — control-rate coefficient update, per-sample state update
-                if ((filterUpdateCounter & FILTER_UPDATE_MASK) == 0)
-                    _filter.UpdateCoefs(fc, resN, sr);
-                filterUpdateCounter++;
-                float filtered = _filter.Process(oscOut);
+                // 7. VCF
+                float filtered = _filter.Process(oscOut, fc, resN, sr);
 
-                // 8. VCA (branchless — gain = env (env mode) or gateLvl (gate mode))
-                float gain = env * vcaUseEnv + gateLvl * vcaUseGate;
+                // 8. VCA
+                float gain = (vcaMode == 1) ? env : (_gateActive ? 1f : 0f);
                 float sample = filtered * gain * volume;
 
                 // 9. Output (mono → both channels). Generators write directly
