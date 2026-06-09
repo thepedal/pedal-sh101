@@ -11,9 +11,13 @@
 // previous note.
 //
 // Time mapping: 0..127 maps log-uniformly to:
-//   Attack          1 ms .. 5  s
-//   Decay / Release 1 ms .. 10 s
+//   Attack          2 ms ..  8 s
+//   Decay / Release 2 ms .. 15 s
 // Sustain is a level (0..1), not a time.
+//
+// v1.2: ranges tightened from 1ms..5/10s (v1.1) — see SH101 notes §11
+// for rationale. Default values in PedalSH101.cs adjusted to match;
+// existing presets reauthored at the same time.
 
 using System;
 
@@ -74,9 +78,9 @@ namespace PedalSH101
                 Sustain == _cS && Release == _cR) return;
             _cSr = sr; _cA = Attack; _cD = Decay; _cS = Sustain; _cR = Release;
 
-            _aCoef  = TimeToCoef(Attack,  1f, 5000f,  sr);
-            _dCoef  = TimeToCoef(Decay,   1f, 10000f, sr);
-            _rCoef  = TimeToCoef(Release, 1f, 10000f, sr);
+            _aCoef  = TimeToCoef(Attack,  2f,  8000f, sr);
+            _dCoef  = TimeToCoef(Decay,   2f, 15000f, sr);
+            _rCoef  = TimeToCoef(Release, 2f, 15000f, sr);
             _sLevel = Sustain / 127f;
         }
 

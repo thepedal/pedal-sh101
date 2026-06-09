@@ -121,10 +121,13 @@ Single track, mono. Note-off = 1 (Buzz `Note.Off` = 0xFF).
 | Name     | Range | Default | Notes                          |
 |----------|------:|--------:|--------------------------------|
 | VCA Mode | 0–1   | 1 (Env) | Gate or Env                    |
-| Attack   | 0–127 | 0       | ~1 ms .. 5 s, log              |
-| Decay    | 0–127 | 64      | ~1 ms .. 10 s, log             |
+| Attack   | 0–127 | 0       | ~2 ms .. 8 s, log              |
+| Decay    | 0–127 | 64      | ~2 ms .. 15 s, log             |
 | Sustain  | 0–127 | 100     | Level (0..1)                   |
-| Release  | 0–127 | 32      | ~1 ms .. 10 s, log             |
+| Release  | 0–127 | 50      | ~2 ms .. 15 s, log             |
+
+Hover any parameter to see its actual value in human units (ms, Hz, %,
+oct, ¢) via `DescribeValue`.
 
 ### LFO
 | Name      | Range | Default | Notes                              |

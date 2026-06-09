@@ -55,13 +55,28 @@ DEFAULTS = {
     "Sub Type": 0,
     "Cutoff": 90, "Resonance": 0, "Env Amt": 64, "VCF Mod": 0,
     "Kbd Follow": 0, "VCA Mode": 1,
-    "Attack": 0, "Decay": 64, "Sustain": 100, "Release": 32,
+    "Attack": 0, "Decay": 64, "Sustain": 100, "Release": 50,
     "LFO Rate": 64, "LFO Wave": 0, "LFO Delay": 0,
     "Glide": 0, "Tune": 50, "Volume": 96,
 }
 
 # ─── Presets — sparse overrides. Only list params that differ from defaults.
-# Categories are loosely:
+#
+# ADSR cheat sheet (v1.2 ranges, Decay/Release log 2ms..15s):
+#   Decay  50 → τ ≈ 39 ms,  perceived ~120 ms   (drum hit)
+#   Decay  55 → τ ≈ 52 ms,  perceived ~155 ms
+#   Decay  64 → τ ≈ 70 ms,  perceived ~210 ms   (default)
+#   Decay  70 → τ ≈ 120 ms, perceived ~360 ms   (stab / pluck)
+#   Decay  80 → τ ≈ 211 ms, perceived ~635 ms   (short bass)
+#   Decay  90 → τ ≈ 370 ms, perceived ~1.1 s    (long bass / sweep)
+#   Decay 100 → τ ≈ 650 ms, perceived ~1.9 s    (pad / drone)
+#
+# Attack log 2ms..8s — same shape, slightly compressed:
+#   Attack 65 → τ ≈ 123 ms, perceived ~370 ms   (gentle attack)
+#   Attack 75 → τ ≈ 205 ms, perceived ~620 ms   (pad attack)
+#   Attack 85 → τ ≈ 340 ms, perceived ~1.0 s    (slow pad)
+#
+# Categories:
 #   - Bass:   Acid, Sub, Deep Sub, Reese, Wobble
 #   - Lead:   Square, Vibrato, Glide, Sync-ish
 #   - Pluck:  Pluck Seq, Saw Stab
@@ -74,19 +89,18 @@ PRESETS = {
     # ─── Bass ─────────────────────────────────────────────────────────
 
     "Acid Bass": {
-        # 303-style: saw, low cutoff, high res, env sweep, snappy decay.
+        # 303-style: saw, low cutoff, high res, env sweep, ~390ms decay.
         "Pulse Lvl": 0, "Saw Lvl": 100,
         "Cutoff": 40, "Resonance": 100, "Env Amt": 94,
         "Kbd Follow": 1,
-        "Decay": 40, "Sustain": 0, "Release": 16,
+        "Decay": 72, "Sustain": 0, "Release": 35,
         "Glide": 30, "Volume": 100,
     },
 
     "Sub Bass": {
-        # Pure sub oscillator at -1 oct square. Round, fat, no filter mod.
+        # Pure sub at -1 oct square. Round, fat, sustains while held.
         "Pulse Lvl": 0, "Sub Lvl": 127,
         "Cutoff": 70,
-        "Release": 20,
     },
 
     "Deep Sub": {
@@ -94,16 +108,17 @@ PRESETS = {
         "Range": 0,
         "Pulse Lvl": 0, "Sub Lvl": 127, "Sub Type": 2,
         "Cutoff": 50,
-        "Release": 20, "Volume": 100,
+        "Volume": 100,
     },
 
     "Reese-ish": {
-        # Single-VCO Reese approximation: saw + sub, slow LFO on cutoff.
+        # Single-VCO Reese approximation: saw + sub, slow LFO on cutoff,
+        # gentle fade-out on note-off.
         "Range": 0,
         "Pulse Lvl": 0, "Saw Lvl": 100, "Sub Lvl": 60, "Sub Type": 1,
         "Cutoff": 40, "Resonance": 60, "Env Amt": 72,
         "VCF Mod": 30,
-        "Decay": 80, "Release": 40,
+        "Release": 80,
         "LFO Rate": 25,
         "Glide": 20, "Volume": 95,
     },
@@ -114,7 +129,6 @@ PRESETS = {
         "Cutoff": 30, "Resonance": 80,
         "VCF Mod": 80,
         "VCA Mode": 0,            # Gate — let LFO shape the level
-        "Release": 30,
         "LFO Rate": 50,
         "Volume": 100,
     },
@@ -122,10 +136,10 @@ PRESETS = {
     # ─── Lead ─────────────────────────────────────────────────────────
 
     "Square Lead": {
-        # Full square pulse, mild env on filter, no res. The classic.
+        # Full square pulse, mild env on filter, gentle release.
         "Cutoff": 80, "Resonance": 30, "Env Amt": 79,
         "Kbd Follow": 1,
-        "Attack": 2, "Decay": 50, "Sustain": 90, "Release": 30,
+        "Decay": 60, "Sustain": 90, "Release": 65,
         "LFO Rate": 70, "Volume": 100,
     },
 
@@ -135,7 +149,7 @@ PRESETS = {
         "Sub Lvl": 30,
         "Cutoff": 75, "Resonance": 30, "Env Amt": 76,
         "Kbd Follow": 1,
-        "Attack": 3, "Decay": 60, "Release": 30,
+        "Attack": 5, "Decay": 60, "Release": 65,
         "LFO Rate": 60, "LFO Delay": 64,
         "Glide": 10, "Volume": 100,
     },
@@ -146,39 +160,39 @@ PRESETS = {
         "Sub Lvl": 50,
         "Cutoff": 75, "Resonance": 25, "Env Amt": 74,
         "Kbd Follow": 1,
-        "Attack": 2, "Decay": 60, "Release": 30,
+        "Decay": 60, "Release": 65,
         "LFO Rate": 60,
         "Glide": 70, "Volume": 100,
     },
 
     "Sync-ish Lead": {
-        # No hard sync (single VCO) but high res + saw + env sweep gets
-        # close to the harmonic richness.
+        # No hard sync (single VCO) but high res + saw + slow env sweep
+        # gets close to the harmonic richness.
         "Pulse Lvl": 0, "Saw Lvl": 100,
         "Cutoff": 40, "Resonance": 110, "Env Amt": 119,
         "Kbd Follow": 2,
-        "Decay": 70, "Sustain": 40, "Release": 30,
+        "Decay": 85, "Sustain": 40, "Release": 55,
         "Volume": 95,
     },
 
     # ─── Pluck / Stab ─────────────────────────────────────────────────
 
     "Pluck Seq": {
-        # Mid PWM, all three osc sources, big env sweep, no sustain.
+        # Three osc sources, big env sweep, ~270ms pluck decay.
         "PWM": 32,
         "Pulse Lvl": 70, "Saw Lvl": 70, "Sub Lvl": 30,
         "Cutoff": 35, "Resonance": 70, "Env Amt": 109,
         "Kbd Follow": 1,
-        "Decay": 25, "Sustain": 0, "Release": 20,
+        "Decay": 65, "Sustain": 0, "Release": 40,
         "Volume": 100,
     },
 
     "Saw Stab": {
-        # Pure saw with a sub layer, mild filter sweep, no sustain.
+        # Pure saw with sub layer, mid-bright filter, ~360ms stab.
         "Pulse Lvl": 0, "Saw Lvl": 127, "Sub Lvl": 30,
         "Cutoff": 65, "Resonance": 30, "Env Amt": 89,
         "Kbd Follow": 1,
-        "Decay": 35, "Sustain": 0, "Release": 25,
+        "Decay": 70, "Sustain": 0, "Release": 40,
         "Volume": 100,
     },
 
@@ -191,20 +205,20 @@ PRESETS = {
         "Cutoff": 70, "Resonance": 20, "Env Amt": 74,
         "VCF Mod": 20,
         "Kbd Follow": 1,
-        "Attack": 70, "Decay": 80, "Sustain": 90, "Release": 80,
+        "Attack": 80, "Decay": 80, "Sustain": 90, "Release": 100,
         "LFO Rate": 20,
         "Volume": 90,
     },
 
     "String Pad": {
-        # Saw + pulse mix, subtle delayed vibrato, long slow attack.
+        # Saw + pulse mix, subtle delayed vibrato, smooth pad envelope.
         "VCO Mod": 3,
         "PWM": 32,
         "Pulse Lvl": 90, "Saw Lvl": 90, "Sub Lvl": 40,
         "Cutoff": 60, "Resonance": 10, "Env Amt": 74,
         "VCF Mod": 15,
         "Kbd Follow": 1,
-        "Attack": 65, "Decay": 80, "Release": 90,
+        "Attack": 75, "Decay": 80, "Release": 105,
         "LFO Rate": 40, "LFO Delay": 50,
         "Volume": 90,
     },
@@ -212,10 +226,10 @@ PRESETS = {
     # ─── Sweep ────────────────────────────────────────────────────────
 
     "Resonant Sweep": {
-        # Pulse + saw together, low cutoff with huge upward env sweep.
+        # Pulse + saw, low cutoff with big upward env sweep over ~1s.
         "Saw Lvl": 80, "Pulse Lvl": 80,
         "Cutoff": 30, "Resonance": 110, "Env Amt": 114,
-        "Attack": 60, "Decay": 80, "Sustain": 50, "Release": 60,
+        "Attack": 65, "Decay": 90, "Sustain": 50, "Release": 80,
         "Volume": 90,
     },
 
@@ -223,7 +237,7 @@ PRESETS = {
         # Filtered noise with big env mod — for risers and FX.
         "Pulse Lvl": 0, "Noise Lvl": 127,
         "Cutoff": 20, "Resonance": 80, "Env Amt": 114,
-        "Decay": 80, "Sustain": 0, "Release": 40,
+        "Decay": 95, "Sustain": 0, "Release": 70,
         "Volume": 100,
     },
 
@@ -233,7 +247,7 @@ PRESETS = {
         "Sub Lvl": 40,
         "Cutoff": 80, "Resonance": 20,
         "Kbd Follow": 1,
-        "Attack": 80, "Decay": 80, "Sustain": 70, "Release": 70,
+        "Attack": 80, "Decay": 80, "Sustain": 70, "Release": 95,
         "Volume": 100,
     },
 
@@ -248,7 +262,7 @@ PRESETS = {
         "Cutoff": 50, "Resonance": 110,
         "VCF Mod": 50,
         "VCA Mode": 0,            # Gate — sustained drone
-        "Attack": 60, "Release": 80,
+        "Attack": 75, "Release": 100,
         "LFO Rate": 15,
         "Volume": 90,
     },
@@ -257,7 +271,7 @@ PRESETS = {
         # Sample-and-hold LFO on the filter — randomly stepped timbre.
         "Cutoff": 60, "Resonance": 50,
         "VCF Mod": 90,
-        "Decay": 30, "Sustain": 70, "Release": 20,
+        "Decay": 75, "Sustain": 70, "Release": 55,
         "LFO Rate": 80, "LFO Wave": 2,
         "Volume": 100,
     },
@@ -268,29 +282,29 @@ PRESETS = {
         "Pulse Lvl": 0, "Noise Lvl": 5,
         "Cutoff": 50, "Resonance": 120, "Env Amt": 99,
         "Kbd Follow": 2,
-        "Decay": 20, "Sustain": 0, "Release": 15,
+        "Decay": 60, "Sustain": 0, "Release": 45,
         "Volume": 90,
     },
 
     "Bell": {
-        # High-octave pulse + sub, ringy filter, percussive env.
+        # High-octave pulse + sub, ringy filter, bell-like decay.
         "Range": 2,
         "PWM": 50,
         "Sub Lvl": 50,
         "Resonance": 70,
         "Kbd Follow": 2,
-        "Decay": 50, "Sustain": 0, "Release": 60,
+        "Decay": 80, "Sustain": 0, "Release": 75,
         "Volume": 90,
     },
 
     # ─── Perc ─────────────────────────────────────────────────────────
 
     "Kick": {
-        # Sub + saw + noise click, fast filter swoop, instant attack.
+        # Sub + saw + noise click, fast filter swoop, ~155ms total.
         "Range": 0,
         "Pulse Lvl": 0, "Saw Lvl": 100, "Sub Lvl": 100, "Noise Lvl": 30,
         "Cutoff": 25, "Resonance": 20, "Env Amt": 114,
-        "Decay": 15, "Sustain": 0, "Release": 10,
+        "Decay": 52, "Sustain": 0, "Release": 40,
         "Volume": 110,
     },
 
@@ -298,7 +312,7 @@ PRESETS = {
         # Pure noise, short envelope, mid-bright filter.
         "Pulse Lvl": 0, "Noise Lvl": 127,
         "Cutoff": 80, "Resonance": 20, "Env Amt": 54,
-        "Decay": 18, "Sustain": 0, "Release": 12,
+        "Decay": 52, "Sustain": 0, "Release": 40,
         "Volume": 100,
     },
 }

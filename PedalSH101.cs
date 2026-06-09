@@ -168,20 +168,20 @@ namespace PedalSH101
 
         // ── Envelope (ADSR) ──
         [ParameterDecl(Name = "Attack",  MinValue = 0, MaxValue = 127, DefValue = 0,
-            Description = "Envelope attack time (~1 ms .. 5 s)")]
+            Description = "Envelope attack time (~2 ms .. 8 s)")]
         public int Attack { get; set; } = 0;
 
         [ParameterDecl(Name = "Decay",   MinValue = 0, MaxValue = 127, DefValue = 64,
-            Description = "Envelope decay time (~1 ms .. 10 s)")]
+            Description = "Envelope decay time (~2 ms .. 15 s)")]
         public int Decay { get; set; } = 64;
 
         [ParameterDecl(Name = "Sustain", MinValue = 0, MaxValue = 127, DefValue = 100,
             Description = "Envelope sustain level")]
         public int Sustain { get; set; } = 100;
 
-        [ParameterDecl(Name = "Release", MinValue = 0, MaxValue = 127, DefValue = 32,
-            Description = "Envelope release time (~1 ms .. 10 s)")]
-        public int Release { get; set; } = 32;
+        [ParameterDecl(Name = "Release", MinValue = 0, MaxValue = 127, DefValue = 50,
+            Description = "Envelope release time (~2 ms .. 15 s)")]
+        public int Release { get; set; } = 50;
 
         // ── LFO ──
         [ParameterDecl(Name = "LFO Rate",
@@ -420,5 +420,101 @@ namespace PedalSH101
 
             return true;   // produced audio
         }
+
+        // ─────────────────────────────────────────────────────────────
+        //  DescribeValue — populates ReBuzz's status-bar with a
+        //  human-readable rendering of the parameter's actual value
+        //  (ms / Hz / oct / %), so the user sees "270 ms" rather than
+        //  "64". Reflected via ManagedMachineHost.cs:255 — signature
+        //  is (IParameter, int), no track.
+        //
+        //  Return null to fall through to the parameter's
+        //  ValueDescriptions (Range, PWM Source, Sub Type, Kbd Follow,
+        //  VCA Mode, LFO Wave all have those).
+        // ─────────────────────────────────────────────────────────────
+        public string DescribeValue(IParameter param, int value)
+        {
+            switch (param.Name)
+            {
+                // ── ADSR times (matches ADSR.cs UpdateCoefs ranges) ──
+                case "Attack":  return FormatMs(LogTimeMs(value, 2f,  8000f));
+                case "Decay":   return FormatMs(LogTimeMs(value, 2f, 15000f));
+                case "Release": return FormatMs(LogTimeMs(value, 2f, 15000f));
+
+                case "Sustain": return FormatPercent(value);
+
+                // ── Generic % levels ──
+                case "Pulse Lvl":
+                case "Saw Lvl":
+                case "Sub Lvl":
+                case "Noise Lvl":
+                case "Resonance":
+                case "VCF Mod":
+                case "PWM":
+                case "Volume":
+                    return FormatPercent(value);
+
+                // ── Frequencies ──
+                case "Cutoff":
+                    return FormatHz(20f * MathF.Pow(1000f, value / 127f));
+                case "LFO Rate":
+                    return FormatHz(0.1f * MathF.Pow(300f, value / 127f));
+
+                // ── Other times ──
+                case "LFO Delay":
+                    return FormatMs((value / 127f) * 2000f);
+                case "Glide":
+                    if (value == 0) return "off";
+                    return FormatMs(MathF.Pow(2000f, (value - 1) / 126f));
+
+                // ── Signed / bipolar ──
+                case "Env Amt":
+                {
+                    float oct = ((value - 64) / 64f) * 5f;
+                    return oct.ToString("+0.00;-0.00;+0.00", InvCulture) + " oct";
+                }
+                case "Tune":
+                {
+                    int cents = value - 50;
+                    return cents.ToString("+0;-0;+0", InvCulture) + " ¢";
+                }
+                case "VCO Mod":
+                {
+                    float semis = (value / 127f) * 12f;
+                    return semis.ToString("0.00", InvCulture) + " semi";
+                }
+
+                default:
+                    return null;
+            }
+        }
+
+        // ─── DescribeValue helpers ───
+        static readonly System.Globalization.CultureInfo InvCulture
+            = System.Globalization.CultureInfo.InvariantCulture;
+
+        static float LogTimeMs(int val, float minMs, float maxMs)
+            => minMs * MathF.Pow(maxMs / minMs, val / 127f);
+
+        static string FormatMs(float ms)
+        {
+            if (ms < 10f)
+                return ms.ToString("0.0", InvCulture) + " ms";
+            if (ms < 1000f)
+                return ((int)MathF.Round(ms)).ToString(InvCulture) + " ms";
+            return (ms / 1000f).ToString("0.00", InvCulture) + " s";
+        }
+
+        static string FormatHz(float hz)
+        {
+            if (hz < 100f)
+                return hz.ToString("0.0", InvCulture) + " Hz";
+            if (hz < 1000f)
+                return ((int)MathF.Round(hz)).ToString(InvCulture) + " Hz";
+            return (hz / 1000f).ToString("0.00", InvCulture) + " kHz";
+        }
+
+        static string FormatPercent(int v)
+            => ((int)MathF.Round(v * 100f / 127f)).ToString(InvCulture) + "%";
     }
 }
