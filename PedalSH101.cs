@@ -39,10 +39,11 @@ namespace PedalSH101
         readonly IBuzzMachineHost host;
 
         // ── DSP blocks ─────────────────────────────────────────────────
-        readonly VCO        _vco    = new VCO();
-        readonly MoogLadder _filter = new MoogLadder();
-        readonly ADSR       _env    = new ADSR();
-        readonly LFO        _lfo    = new LFO();
+        readonly VCO        _vco     = new VCO();
+        readonly MoogLadder _filter  = new MoogLadder();
+        readonly ADSR       _env     = new ADSR();
+        readonly LFO        _lfo     = new LFO();
+        readonly DCBlocker  _dcBlock = new DCBlocker();
 
         // ── Voice state ────────────────────────────────────────────────
         float _currentPitchSemis = 60f;
@@ -227,6 +228,14 @@ namespace PedalSH101
         //  but aren't owned by an inner DSP class. (PedalComp §6)
         // ─────────────────────────────────────────────────────────────
         int   _cSr           = 0;
+
+        // DC-blocker corner. 10 Hz clears the VCO's narrow-pulse/sub offset
+        // while leaving the lowest musical fundamentals (and all but
+        // sub-sonic sub-osc content) untouched. Lower toward ~5 Hz if you
+        // run -2 oct sub on very low notes and want to keep its subsonic
+        // weight; raise it only if you want a tighter low end.
+        const float DC_CORNER_HZ = 10f;
+
         int   _cGlide        = -1;
         float _glideCoef     = 0f;
         int   _cLfoRate      = -1;
@@ -238,6 +247,12 @@ namespace PedalSH101
         {
             bool srChanged = sr != _cSr;
             if (srChanged) _cSr = sr;
+
+            // Recompute the DC-blocker pole for the new rate (Core §29).
+            // State is deliberately not cleared — the held history sample is
+            // a valid recent amplitude, so continuing avoids a settle
+            // transient on the first buffer at the new rate.
+            if (srChanged) _dcBlock.SetCorner(DC_CORNER_HZ, sr);
 
             if (srChanged || Glide != _cGlide)
             {
@@ -404,6 +419,12 @@ namespace PedalSH101
 
                 // 7. VCF
                 float filtered = _filter.Process(oscOut, fc, resN, sr);
+
+                // 7b. DC blocker — strip the VCO's intrinsic offset (narrow
+                //     pulse / narrow sub) here, before the VCA, so it never
+                //     reaches the output and no enveloped-DC ramp thumps on
+                //     note-on. See DCBlocker.cs.
+                filtered = _dcBlock.Process(filtered);
 
                 // 8. VCA
                 float gain = (vcaMode == 1) ? env : (_gateActive ? 1f : 0f);

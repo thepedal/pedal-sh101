@@ -23,6 +23,13 @@ Pitch ────────────────────────�
   Sub-osc supports 1-oct square, 2-oct square, and 2-oct narrow pulse.
 - **VCF** — 4-pole ZDF (zero-delay-feedback) Moog ladder, closed-form
   feedback resolution. Stable to self-oscillation without oversampling.
+- **DC blocker** — one-pole high-pass (~10 Hz) on the VCF output, before
+  the VCA. A pulse of duty *d* has an intrinsic mean of `2d-1`, so a narrow
+  pulse / narrow sub carries a large DC offset (a ~26% pulse ≈ -0.5 FS) that
+  the low-pass VCF passes straight through. This strips it before the VCA —
+  the software equivalent of the SH-101's output AC-coupling. Placed pre-VCA
+  and run continuously (no per-note reset) so it never adds an enveloped-DC
+  thump at note-on.
 - **ADSR** — exponential one-pole stages with cached coefficients.
 - **LFO** — Triangle / Square / S&H / Noise with note-onset delay.
 - **Portamento** — exponential one-pole glide on pitch CV.
