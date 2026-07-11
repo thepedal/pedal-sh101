@@ -91,6 +91,13 @@ namespace PedalSH101
             if (pulseFallEdge >= 1f) pulseFallEdge -= 1f;
             pulse -= PolyBlep(pulseFallEdge, dt);
 
+            // Remove the pulse's intrinsic DC at the source (Core §43.2a). A
+            // pulse of width pwm has mean 2·pwm − 1, so a narrow PWM setting
+            // sits far off zero (pwm = 0.26 → −0.48). Subtracting it makes the
+            // pulse zero-mean by construction — exactly and instantly at any
+            // PWM rate, so LFO→PWM sweeps carry no wandering offset either.
+            pulse -= (2f * pwm - 1f);
+
             // ── Sub-oscillator ────────────────────────────────────────────
             // 1-oct down → freq/2, 2-oct down → freq/4. For the narrow pulse
             // variant we use the same phase but a 25% duty cycle.
@@ -103,6 +110,11 @@ namespace PedalSH101
             float subFallEdge = _subPhase + 1f - subWidth;
             if (subFallEdge >= 1f) subFallEdge -= 1f;
             sub -= PolyBlep(subFallEdge, subDt);
+
+            // Same treatment for the sub: mean is 2·subWidth − 1. That's 0 for
+            // the 50% square variants, but −0.5 for the 25% narrow pulse — a
+            // large standing offset whenever subType == 2.
+            sub -= (2f * subWidth - 1f);
 
             // ── Noise (xorshift32, mapped to ±1) ──────────────────────────
             uint r = _rng;

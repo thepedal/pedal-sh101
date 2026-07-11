@@ -2,7 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <UseWPF>false</UseWPF>
+    <!-- WPF reference assemblies: required for the About window's
+         System.Windows.MessageBox (AboutWindow §1.1). -->
+    <UseWPF>true</UseWPF>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
 
@@ -37,30 +39,45 @@
       <HintPath>$(ReBuzzPath)\Buzz.MachineInterface.dll</HintPath>
       <Private>false</Private>
     </Reference>
-  </ItemGroup>
-
-  <!-- Preset bundle. ItemGroup form (not literal SourceFiles=) so the
-       space in the filename round-trips correctly through MSBuild.
-       (Build §3.5) -->
-  <ItemGroup>
-    <PresetBundle Include="Pedal SH101.prs.xml" />
+    <!-- MenuItemVM + SimpleCommand for the right-click About window
+         (AboutWindow §1.1). -->
+    <Reference Include="BuzzGUI.Common">
+      <HintPath>$(ReBuzzPath)\BuzzGUI.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Auto-deploy after successful build. Generators go in Gear\Generators.
        The preset bundle filename matches the machine name + .prs.xml — the
-       auto-load form per Build §3.1, so ReBuzz picks the presets up the
-       moment the machine is dropped into a song.                           -->
+       auto-load form per Build §3.1.
+
+       The preset Copy is guarded on Exists() with an explicit Warning
+       (Build §3.5.1): a misnamed/absent bundle would otherwise emit MSB3030,
+       which ContinueOnError silently downgrades to a warning — green build,
+       no presets deployed. -->
   <Target Name="DeployToReBuzz" AfterTargets="Build">
-    <Message Text="Deploying $(TargetFileName) → $(ReBuzzPath)\Gear\Generators\"
+    <PropertyGroup>
+      <_PresetPath>$(MSBuildProjectDirectory)\Pedal SH101.prs.xml</_PresetPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_AnyPreset Include="$(MSBuildProjectDirectory)\*.prs.xml" />
+    </ItemGroup>
+
+    <Message Text="Deploying $(TargetFileName) -> $(ReBuzzPath)\Gear\Generators\"
              Importance="high" />
     <Copy SourceFiles="$(TargetPath)"
-          DestinationFolder="$(ReBuzzPath)\Gear\Generators"
+          DestinationFolder="$(ReBuzzPath)\Gear\Generators\"
           ContinueOnError="true" />
-    <Message Text="Deploying @(PresetBundle) → $(ReBuzzPath)\Gear\Generators\"
+
+    <Message Condition="Exists('$(_PresetPath)')"
+             Text="Deploying preset bundle -> $(ReBuzzPath)\Gear\Generators\"
              Importance="high" />
-    <Copy SourceFiles="@(PresetBundle)"
-          DestinationFolder="$(ReBuzzPath)\Gear\Generators"
+    <Copy Condition="Exists('$(_PresetPath)')"
+          SourceFiles="$(_PresetPath)"
+          DestinationFolder="$(ReBuzzPath)\Gear\Generators\"
           ContinueOnError="true" />
+    <Warning Condition="!Exists('$(_PresetPath)')"
+             Text="Preset bundle NOT deployed: '$(_PresetPath)' not found. Found instead: @(_AnyPreset). Per Build 3.1 it must be named 'Pedal SH101.prs.xml' - rename it, or presets won't appear in ReBuzz." />
   </Target>
 
 </Project>

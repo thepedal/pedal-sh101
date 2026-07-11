@@ -24,8 +24,11 @@
 // list, marking the version they were added in.
 
 using System;
+using System.Collections.Generic;   // IEnumerable<T> for Commands
+using System.Windows;               // MessageBox (About window)
 using Buzz.MachineInterface;
 using BuzzGUI.Interfaces;
+using BuzzGUI.Common;               // MenuItemVM, SimpleCommand
 
 namespace PedalSH101
 {
@@ -36,6 +39,38 @@ namespace PedalSH101
         MaxTracks = 1)]
     public class PedalSH101Machine : IBuzzMachine
     {
+        // Single source of truth for the machine version — used by the About
+        // window (AboutWindow §1.3). Bump here on release.
+        internal const string Version = "1.4.0";
+
+        // ── Right-click "About..." menu entry (AboutWindow §1.4) ──────────────
+        public IEnumerable<IMenuItem> Commands
+        {
+            get
+            {
+                yield return new MenuItemVM()
+                {
+                    Text = "About...",
+                    Command = new SimpleCommand()
+                    {
+                        CanExecuteDelegate = p => true,
+                        ExecuteDelegate    = p => MessageBox.Show(
+                            $"Pedal SH101   v{Version}\n\n" +
+                            "Monophonic Roland SH-101 emulation: single VCO (pulse /\n" +
+                            "saw / sub / noise) with PWM, ZDF Moog-ladder VCF,\n" +
+                            "ADSR, LFO and glide.\n\n" +
+                            "Author: Pedal\n" +
+                            "github.com/thepedal/pedal-sh101\n" +
+                            "GPL-3.0 License\n\n" +
+                            "Roland and SH-101 are trademarks of Roland\n" +
+                            "Corporation. This project is independent and is not\n" +
+                            "affiliated with or endorsed by Roland.",
+                            "About Pedal SH101")
+                    }
+                };
+            }
+        }
+
         readonly IBuzzMachineHost host;
 
         // ── DSP blocks ─────────────────────────────────────────────────

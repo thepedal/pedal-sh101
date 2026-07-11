@@ -158,3 +158,15 @@ parameters by index, not name).
 
 There's a clearly-marked "New in v1.x" comment near the bottom of
 `PedalSH101.cs` for this purpose.
+
+---
+
+## License & trademarks
+
+Licensed under the **GNU General Public License v3.0** — see the `LICENSE`
+file for the full text.
+
+Roland and SH-101 are trademarks of Roland Corporation. This project is an
+independent emulation and is **not affiliated with, authorised by, or
+endorsed by Roland Corporation**. The Roland and SH-101 names are used only
+to describe the hardware this machine emulates.
